@@ -25,7 +25,7 @@ const B_COEFFICIENT: f32 = 3950.0; // B value — check your datasheet
 const SERIES_RESISTOR: f32 = 100_000.0;
 const ADC_MAX: f32 = 65535.0; // 16-bit
 
-/// Convert raw 12-bit ADC reading to degrees Celsius
+/// Convert raw ADC reading to degrees Celsius
 /// using the Steinhart-Hart B-parameter equation
 fn adc_to_celsius(raw: u16) -> f32 {
     // voltage divider: thermistor on top, R1 on bottom
