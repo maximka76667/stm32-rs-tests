@@ -18,6 +18,12 @@ embassy-executor = { version = "0.9.1", features = [
     "executor-thread",
 ] }
 embassy-futures = "0.1.2"
+embassy-net = { version = "0.9.0", default-features = false, features = [
+    "proto-ipv4",
+    "tcp",
+    "medium-ethernet",
+    "dhcpv4",
+] }
 embassy-stm32 = { version = "0.5.0", features = [
     "memory-x",
     "stm32h723zg",
@@ -27,9 +33,11 @@ embassy-stm32 = { version = "0.5.0", features = [
 ] }
 embassy-sync = "0.7.2"
 embassy-time = { version = "0.5.0", features = ["tick-hz-32_768"] }
+embedded-io-async = "0.7"
 libm = "0.2.16"
 panic-halt = "1.0.0"
 panic-probe = { version = "1.0.0", features = ["print-defmt"], optional = true }
+static_cell = "2.1.1"
 
 [[bin]]
 name = "stm32-rs-tests"
@@ -45,6 +53,18 @@ bench = false
 [[bin]]
 name = "thermistor"
 path = "src/bin/thermistor.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "eth"
+path = "src/bin/eth.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "my_counter"
+path = "src/bin/my_counter.rs"
 test = false
 bench = false
 
@@ -75,4 +95,5 @@ debug = [
     "embassy-time/defmt",
     "embassy-time/defmt-timestamp-uptime",
     "embassy-stm32/defmt",
+    "embassy-net/defmt",
 ]
