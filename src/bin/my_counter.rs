@@ -5,16 +5,15 @@
 mod fmt;
 
 use embassy_executor::Spawner;
-use embassy_stm32::adc::{Adc, SampleTime};
+use embassy_stm32::bind_interrupts;
 use embassy_stm32::exti::{self, ExtiInput};
-use embassy_stm32::gpio::{Input, Level, Output, Pull, Speed};
-use embassy_stm32::peripherals::ADC1;
-use embassy_stm32::{Config, interrupt};
-use embassy_stm32::{adc, bind_interrupts, peripherals};
+use embassy_stm32::gpio::{Level, Output, Pull, Speed};
+use embassy_stm32::interrupt;
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::mutex::Mutex;
-use embassy_time::{Duration, Timer};
-use fmt::{error, info};
+use embassy_sync::signal::Signal;
+use embassy_time::Timer;
+use fmt::info;
 
 #[cfg(not(feature = "defmt"))]
 use panic_halt as _;
@@ -29,6 +28,8 @@ bind_interrupts!(
 static COUNTER: Mutex<ThreadModeRawMutex, u32> = Mutex::new(0);
 static IS_FAST: Mutex<ThreadModeRawMutex, bool> = Mutex::new(false);
 
+static SIGNAL: Signal<ThreadModeRawMutex, ()> = Signal::new();
+
 #[embassy_executor::task]
 async fn logger_task() {
     info!("Logger task ready!");
@@ -38,7 +39,7 @@ async fn logger_task() {
             let counter = COUNTER.lock().await;
             info!("Counter value: {}", *counter);
         }
-        Timer::after_secs(3).await;
+        Timer::after_secs(2).await;
     }
 }
 
@@ -54,6 +55,8 @@ async fn button_task(mut button: ExtiInput<'static>) {
             let mut is_fast = IS_FAST.lock().await;
             *is_fast = !*is_fast;
         }
+
+        SIGNAL.signal(());
 
         button.wait_for_falling_edge().await;
         info!("Released!");
@@ -73,29 +76,31 @@ async fn main(spawner: Spawner) {
     spawner.spawn(button_task(button)).unwrap();
     spawner.spawn(logger_task()).unwrap();
 
+    let mut is_turned_on = false;
+
     loop {
-        let loc_is_fast;
-
-        {
+        let delay = {
             let is_fast = IS_FAST.lock().await;
-            loc_is_fast = *is_fast;
+            if *is_fast { 300 } else { 1000 }
+        };
+
+        if is_turned_on {
+            red_led.set_high();
+            green_led.set_high();
+        } else {
+            red_led.set_low();
+            green_led.set_low();
         }
 
-        if loc_is_fast {
-            red_led.set_high();
-            green_led.set_high();
-            Timer::after_millis(300).await;
-            red_led.set_low();
-            green_led.set_low();
-            Timer::after_millis(300).await;
-        } else {
-            red_led.set_high();
-            green_led.set_high();
-            Timer::after_millis(1000).await;
-            red_led.set_low();
-            green_led.set_low();
-            Timer::after_millis(1000).await;
+        let signal_race =
+            embassy_futures::select::select(Timer::after_millis(delay), SIGNAL.wait()).await;
+
+        match signal_race {
+            embassy_futures::select::Either::First(_) => (),
+            embassy_futures::select::Either::Second(_) => continue,
         }
+
+        is_turned_on = !is_turned_on;
 
         {
             let mut counter = COUNTER.lock().await;
