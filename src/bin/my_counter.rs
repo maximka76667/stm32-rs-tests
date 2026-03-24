@@ -11,9 +11,10 @@ use embassy_stm32::gpio::{Level, Output, Pull, Speed};
 use embassy_stm32::interrupt;
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::mutex::Mutex;
+use embassy_sync::pubsub::PubSubChannel;
 use embassy_sync::signal::Signal;
 use embassy_time::Timer;
-use fmt::info;
+use fmt::{info, warn};
 
 #[cfg(not(feature = "defmt"))]
 use panic_halt as _;
@@ -28,7 +29,7 @@ bind_interrupts!(
 static COUNTER: Mutex<ThreadModeRawMutex, u32> = Mutex::new(0);
 static IS_FAST: Mutex<ThreadModeRawMutex, bool> = Mutex::new(false);
 
-static SIGNAL: Signal<ThreadModeRawMutex, ()> = Signal::new();
+static BUTTON_PRESSED: PubSubChannel<ThreadModeRawMutex, (), 1, 2, 1> = PubSubChannel::new();
 
 #[embassy_executor::task]
 async fn logger_task() {
@@ -44,8 +45,28 @@ async fn logger_task() {
 }
 
 #[embassy_executor::task]
+async fn watchdog_task() {
+    info!("Watchdog task ready!");
+
+    let mut sub = BUTTON_PRESSED.subscriber().unwrap();
+
+    loop {
+        let watchdog_race =
+            embassy_futures::select::select(Timer::after_secs(5), sub.next_message_pure()).await;
+
+        match watchdog_race {
+            embassy_futures::select::Either::First(_) => {
+                warn!("Button wasn't pressed for 5 seconds already!")
+            }
+            embassy_futures::select::Either::Second(_) => (),
+        }
+    }
+}
+
+#[embassy_executor::task]
 async fn button_task(mut button: ExtiInput<'static>) {
     info!("Button task ready!");
+    let publ = BUTTON_PRESSED.publisher().unwrap();
 
     loop {
         button.wait_for_rising_edge().await;
@@ -56,7 +77,7 @@ async fn button_task(mut button: ExtiInput<'static>) {
             *is_fast = !*is_fast;
         }
 
-        SIGNAL.signal(());
+        publ.publish_immediate(());
 
         button.wait_for_falling_edge().await;
         info!("Released!");
@@ -70,13 +91,14 @@ async fn main(spawner: Spawner) {
 
     let mut red_led = Output::new(p.PB14, Level::Low, Speed::Low);
     let mut green_led = Output::new(p.PB0, Level::Low, Speed::Low);
-    info!("LEDs created!");
 
     let button = ExtiInput::new(p.PC13, p.EXTI13, Pull::Down, Irqs);
     spawner.spawn(button_task(button)).unwrap();
     spawner.spawn(logger_task()).unwrap();
+    spawner.spawn(watchdog_task()).unwrap();
 
     let mut is_turned_on = false;
+    let mut sub = BUTTON_PRESSED.subscriber().unwrap();
 
     loop {
         let delay = {
@@ -92,8 +114,10 @@ async fn main(spawner: Spawner) {
             green_led.set_low();
         }
 
+        let loop_delay = Timer::after_millis(delay);
+
         let signal_race =
-            embassy_futures::select::select(Timer::after_millis(delay), SIGNAL.wait()).await;
+            embassy_futures::select::select(loop_delay, sub.next_message_pure()).await;
 
         match signal_race {
             embassy_futures::select::Either::First(_) => (),
