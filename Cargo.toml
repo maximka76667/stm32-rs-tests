@@ -74,6 +74,12 @@ path = "src/bin/watchdog.rs"
 test = false
 bench = false
 
+[[bin]]
+name = "usart"
+path = "src/bin/usart.rs"
+test = false
+bench = false
+
 [profile.dev]
 debug = true
 lto = true
