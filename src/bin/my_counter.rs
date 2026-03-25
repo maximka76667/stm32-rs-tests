@@ -12,7 +12,6 @@ use embassy_stm32::interrupt;
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_sync::pubsub::PubSubChannel;
-use embassy_sync::signal::Signal;
 use embassy_time::Timer;
 use fmt::{info, warn};
 
@@ -27,9 +26,8 @@ bind_interrupts!(
 });
 
 static COUNTER: Mutex<ThreadModeRawMutex, u32> = Mutex::new(0);
-static IS_FAST: Mutex<ThreadModeRawMutex, bool> = Mutex::new(false);
 
-static BUTTON_PRESSED: PubSubChannel<ThreadModeRawMutex, (), 1, 2, 1> = PubSubChannel::new();
+static BUTTON_PRESSED: PubSubChannel<ThreadModeRawMutex, u32, 1, 2, 1> = PubSubChannel::new();
 
 #[embassy_executor::task]
 async fn logger_task() {
@@ -67,17 +65,16 @@ async fn watchdog_task() {
 async fn button_task(mut button: ExtiInput<'static>) {
     info!("Button task ready!");
     let publ = BUTTON_PRESSED.publisher().unwrap();
+    let mut is_fast = false;
 
     loop {
         button.wait_for_rising_edge().await;
         info!("Pressed!");
 
-        {
-            let mut is_fast = IS_FAST.lock().await;
-            *is_fast = !*is_fast;
-        }
+        is_fast = !is_fast;
+        let delay = if is_fast { 300 } else { 1000 };
 
-        publ.publish_immediate(());
+        publ.publish_immediate(delay);
 
         button.wait_for_falling_edge().await;
         info!("Released!");
@@ -98,14 +95,10 @@ async fn main(spawner: Spawner) {
     spawner.spawn(watchdog_task()).unwrap();
 
     let mut is_turned_on = false;
+    let mut delay = 1000u32;
     let mut sub = BUTTON_PRESSED.subscriber().unwrap();
 
     loop {
-        let delay = {
-            let is_fast = IS_FAST.lock().await;
-            if *is_fast { 300 } else { 1000 }
-        };
-
         if is_turned_on {
             red_led.set_high();
             green_led.set_high();
@@ -114,14 +107,17 @@ async fn main(spawner: Spawner) {
             green_led.set_low();
         }
 
-        let loop_delay = Timer::after_millis(delay);
+        let loop_delay = Timer::after_millis(delay as u64);
 
         let signal_race =
             embassy_futures::select::select(loop_delay, sub.next_message_pure()).await;
 
         match signal_race {
             embassy_futures::select::Either::First(_) => (),
-            embassy_futures::select::Either::Second(_) => continue,
+            embassy_futures::select::Either::Second(new_delay) => {
+                delay = new_delay;
+                continue;
+            }
         }
 
         is_turned_on = !is_turned_on;

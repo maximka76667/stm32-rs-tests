@@ -7,8 +7,6 @@ mod fmt;
 use embassy_executor::Spawner;
 use embassy_stm32::Config;
 use embassy_stm32::adc::{Adc, SampleTime};
-use embassy_stm32::peripherals::ADC1;
-use embassy_stm32::{adc, bind_interrupts, peripherals};
 use embassy_time::{Duration, Timer};
 use fmt::{error, info};
 use libm::logf;
