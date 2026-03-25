@@ -68,6 +68,12 @@ path = "src/bin/my_counter.rs"
 test = false
 bench = false
 
+[[bin]]
+name = "watchdog"
+path = "src/bin/watchdog.rs"
+test = false
+bench = false
+
 [profile.dev]
 debug = true
 lto = true
