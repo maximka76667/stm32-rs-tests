@@ -20,7 +20,7 @@ use panic_halt as _;
 use {defmt_rtt as _, panic_probe as _};
 
 const ADDRESS: u8 = 0x68;
-const WHOAMI: u8 = 0x75;
+const _WHOAMI: u8 = 0x75;
 
 const PWR_MGMT_1: u8 = 0x6B;
 const ACCEL_XOUT_H: u8 = 0x3B;
