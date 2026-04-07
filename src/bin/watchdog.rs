@@ -10,6 +10,7 @@ use embassy_stm32::{
     exti::{self, ExtiInput},
     gpio::{Level, Output, Pull, Speed},
     interrupt,
+    mode::Async,
     wdg::IndependentWatchdog,
 };
 use fmt::info;
@@ -28,7 +29,7 @@ bind_interrupts!(
 });
 
 #[embassy_executor::task]
-async fn button_task(mut button: ExtiInput<'static>) {
+async fn button_task(mut button: ExtiInput<'static, Async>) {
     info!("Button task ready!");
 
     loop {

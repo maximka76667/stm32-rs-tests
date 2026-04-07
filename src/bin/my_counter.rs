@@ -9,6 +9,7 @@ use embassy_stm32::bind_interrupts;
 use embassy_stm32::exti::{self, ExtiInput};
 use embassy_stm32::gpio::{Level, Output, Pull, Speed};
 use embassy_stm32::interrupt;
+use embassy_stm32::mode::Async;
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_sync::pubsub::PubSubChannel;
@@ -62,7 +63,7 @@ async fn watchdog_task() {
 }
 
 #[embassy_executor::task]
-async fn button_task(mut button: ExtiInput<'static>) {
+async fn button_task(mut button: ExtiInput<'static, Async>) {
     info!("Button task ready!");
     let publ = BUTTON_PRESSED.publisher().unwrap();
     let mut is_fast = false;

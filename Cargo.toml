@@ -24,7 +24,7 @@ embassy-net = { version = "0.9.0", default-features = false, features = [
     "medium-ethernet",
     "dhcpv4",
 ] }
-embassy-stm32 = { version = "0.5.0", features = [
+embassy-stm32 = { version = "0.6.0", features = [
     "memory-x",
     "stm32h723zg",
     "time-driver-any",
@@ -33,6 +33,7 @@ embassy-stm32 = { version = "0.5.0", features = [
 ] }
 embassy-sync = "0.7.2"
 embassy-time = { version = "0.5.0", features = ["tick-hz-32_768"] }
+embedded-hal = "1.0.0"
 embedded-io-async = "0.7"
 libm = "0.2.16"
 panic-halt = "1.0.0"
@@ -77,6 +78,42 @@ bench = false
 [[bin]]
 name = "usart"
 path = "src/bin/usart.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "i2c"
+path = "src/bin/i2c.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "i2c_scan"
+path = "src/bin/i2c_scan.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "mpu6500_test"
+path = "src/bin/mpu6500_test.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "mpu6500_reading"
+path = "src/bin/mpu6500_reading.rs"
+test = false
+bench = false
+
+[lib]
+name = "mpu6500_driver"
+path = "src/lib.rs"
+test = false
+bench = false
+
+[[bin]]
+name = "mpu6500"
+path = "src/bin/mpu6500.rs"
 test = false
 bench = false
 
