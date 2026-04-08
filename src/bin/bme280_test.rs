@@ -10,7 +10,6 @@ use embassy_executor::Spawner;
 use embassy_stm32::{
     bind_interrupts, dma,
     i2c::{self, I2c},
-    mode::Mode,
     peripherals,
 };
 
